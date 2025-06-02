@@ -23,3 +23,27 @@ export function addReputation(data) {
 export function getUserList(params) {
   return request.get('/api/user/list', { params });
 }
+
+// 验证JWT令牌是否有效
+export function verifyToken() {
+  return request.post('/api/auth/verify-token');
+}
+
+export function getPoints() {
+  return request.get('/api/user/points');
+}
+
+export function addOrderReputation(orderId, data) {
+  return request({
+    url: `/api/user/order-reputation/${orderId}`,
+    method: 'post',
+    data
+  });
+}
+
+export function getOrderReputation(orderId) {
+  return request({
+    url: `/api/user/order-reputation/${orderId}`,
+    method: 'get'
+  });
+}

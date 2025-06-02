@@ -4,7 +4,9 @@ import time
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 import secrets
-from models import User 
+from models import User
+
+
 class AuthUtils:
     SECRET_KEY = "your-jwt-secret-key-here"  # 在生产环境中应该使用环境变量
 

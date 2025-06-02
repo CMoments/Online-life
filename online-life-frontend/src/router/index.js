@@ -11,19 +11,45 @@ import Points from '@/views/Points.vue';
 import Reputation from '@/views/Reputation.vue';
 import UserList from '@/views/UserList.vue';
 import NotFound from '@/views/NotFound.vue';
+import CreateOrder from '@/views/CreateOrder.vue';
+import AvailableOrderList from '@/views/AvailableOrderList.vue'; // Staff可接单列表
+import StaffAvailableGroupTask from '@/views/StaffAvailableGroupTask.vue';
+import CreateGroupTask from '@/views/CreateGroupTask.vue';
+import MyGroupTasks from '@/views/MyGroupTasks.vue';
+import MyBidRecords from '@/views/MyBidRecords.vue';
+
 
 const routes = [
   { path: '/login', component: Login },
   { path: '/register', component: Register },
   { path: '/', component: Dashboard },
   { path: '/profile', component: UserProfile },
-  { path: '/orders', component: OrderList },
-  { path: '/orders/:id', component: OrderDetail },
+  { path: '/orders', component: OrderList }, // 普通用户订单列表
+  { 
+    path: '/orders/:orderId', 
+    name: 'OrderDetail',
+    component: OrderDetail 
+  },
+  { 
+    path: '/payment/:orderId', 
+    name: 'OrderPayment',
+    component: OrderDetail  // 使用相同的组件，通过路由参数区分
+  },
+  { path: '/available-orders', component: AvailableOrderList }, // Staff可接单列表
   { path: '/tasks', component: TaskList },
   { path: '/tasks/:id', component: TaskDetail },
   { path: '/points', component: Points },
   { path: '/reputation', component: Reputation },
   { path: '/users', component: UserList },
+  {
+    path: '/create-order',
+    name: 'CreateOrder',
+    component: CreateOrder
+  },
+  { path: '/staff/group-tasks', component: StaffAvailableGroupTask },
+  { path: '/create-group-task', component: CreateGroupTask },
+  { path: '/my-group-tasks', component: MyGroupTasks },
+  { path: '/my-bid-records', component: MyBidRecords },
   { path: '/:pathMatch(.*)*', component: NotFound }
 ];
 
@@ -46,5 +72,19 @@ router.beforeEach((to, from, next) => {
     next();
   }
 });
+
+const payOrderHandler = async () => {
+  try {
+    const res = await payOrder(order_id);
+    if (res.data.success) {
+      ElMessage.success('支付成功');
+      // 刷新订单详情
+    } else {
+      ElMessage.error(res.data.message || '支付失败');
+    }
+  } catch (e) {
+    ElMessage.error('支付失败');
+  }
+};
 
 export default router;

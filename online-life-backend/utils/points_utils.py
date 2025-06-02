@@ -2,11 +2,24 @@ from decimal import Decimal
 from datetime import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, func
+from sqlalchemy import Integer
 from typing import Dict, List, Optional, Any
 from models import Points, User
 import logging
+import traceback
+import re
 
+# 日志文件路径
+POINTS_LOG_FILE = "points.log"
+
+# 配置 logger 既输出到控制台也输出到文件
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+file_handler = logging.FileHandler(POINTS_LOG_FILE, encoding="utf-8")
+formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+file_handler.setFormatter(formatter)
+if not logger.hasHandlers():
+    logger.addHandler(file_handler)
 
 
 class PointsUtils:
@@ -241,54 +254,9 @@ class PointsUtils:
         db: Session, user_id: Decimal, page: int = 1, per_page: int = 20
     ) -> Dict[str, Any]:
         """
-        获取用户积分历史记录
-
-        Args:
-            db: 数据库会话
-            user_id: 用户ID
-            page: 页码
-            per_page: 每页记录数
-
-        Returns:
-            Dict: 包含历史记录和分页信息的字典
+        获取用户积分历史记录（从日志文件读取）
         """
-        try:
-            # 由于当前模型设计较简单，这里返回模拟数据
-            # 在实际项目中，您可能需要创建一个 PointsHistory 表来记录详细的积分变更历史
-
-            current_balance = PointsUtils.get_user_points_balance(db, user_id)
-
-            # 模拟历史记录（实际项目中应该从积分历史表查询）
-            mock_history = [
-                {
-                    "id": 1,
-                    "points_change": "+100",
-                    "transaction_type": "ADD",
-                    "reason": "每日签到奖励",
-                    "balance_after": current_balance,
-                    "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                }
-            ]
-
-            return {
-                "records": mock_history,
-                "current_page": page,
-                "per_page": per_page,
-                "total_records": len(mock_history),
-                "total_pages": 1,
-                "current_balance": current_balance,
-            }
-
-        except Exception as e:
-            logger.error(f"获取积分历史失败: {str(e)}")
-            return {
-                "records": [],
-                "current_page": page,
-                "per_page": per_page,
-                "total_records": 0,
-                "total_pages": 0,
-                "current_balance": 0,
-            }
+        return PointsUtils.get_points_history_from_log(user_id, page, per_page)
 
     # @staticmethod
     # def get_points_ranking(db: Session, limit: int = 50) -> List[Dict[str, Any]]:
@@ -349,7 +317,7 @@ class PointsUtils:
                 .join(User, Points.UserID == User.UserID)  # 通过 UserID 关联两个表
                 .filter(Points.Points.isnot(None))  # 过滤掉 Points 为空的记录
                 .order_by(
-                    desc(func.cast(Points.Points, func.INTEGER()))
+                    desc(func.cast(Points.Points, Integer))
                 )  # 按 Points 降序排列 (转换为整数比较)
                 .limit(limit)  # 限制返回的记录数
             )
@@ -367,6 +335,7 @@ class PointsUtils:
             return ranking_list
 
         except Exception as e:
+            traceback.print_exc()
             logger.error(f"获取积分排行榜失败: {str(e)}")
             return []
 
@@ -381,26 +350,15 @@ class PointsUtils:
         balance_after: int,
     ) -> None:
         """
-        记录积分变更日志（私有方法）
-
-        Args:
-            db: 数据库会话
-            user_id: 用户ID
-            points_change: 积分变更数量
-            transaction_type: 交易类型
-            reason: 变更原因
-            balance_before: 变更前余额
-            balance_after: 变更后余额
+        记录积分变更日志（写入 points.log 文件）
         """
         try:
-            # 这里只是日志记录，实际项目中您可能需要将这些信息存储到积分历史表中
             log_message = (
                 f"积分变更 - 用户: {user_id}, 类型: {transaction_type}, "
                 f"变更: {points_change}, 原因: {reason}, "
                 f"余额: {balance_before} -> {balance_after}"
             )
-            logger.info(log_message)
-
+            logger.info(log_message)  # 这行会写入 points.log
         except Exception as e:
             logger.error(f"记录积分变更日志失败: {str(e)}")
 
@@ -473,3 +431,50 @@ class PointsUtils:
         """
         current_balance = PointsUtils.get_user_points_balance(db, user_id)
         return current_balance >= required_points
+
+    @staticmethod
+    def get_points_history_from_log(user_id: Decimal, page: int = 1, per_page: int = 20) -> Dict[str, Any]:
+        """
+        从日志文件中获取用户积分历史记录
+        """
+        log_file_path = POINTS_LOG_FILE  # 使用统一的日志文件路径
+        pattern = re.compile(
+            rf"积分变更 - 用户: {user_id}, 类型: (\w+), 变更: ([\-\d]+), 原因: (.*?), 余额: (\d+) -> (\d+)"
+        )
+        history = []
+        try:
+            with open(log_file_path, "r", encoding="utf-8") as f:
+                for line in reversed(f.readlines()):
+                    match = pattern.search(line)
+                    if match:
+                        transaction_type, points_change, reason, balance_before, balance_after = match.groups()
+                        # 从日志时间戳中提取时间
+                        time_match = re.match(r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})", line)
+                        created_at = time_match.group(1) if time_match else ""
+                        history.append({
+                            "transaction_type": transaction_type,
+                            "points_change": int(points_change),
+                            "reason": reason,
+                            "balance_after": int(balance_after),
+                            "created_at": created_at,
+                        })
+            total_records = len(history)
+            start = (page - 1) * per_page
+            end = start + per_page
+            paged_history = history[start:end]
+            return {
+                "records": paged_history,
+                "current_page": page,
+                "per_page": per_page,
+                "total_records": total_records,
+                "total_pages": (total_records + per_page - 1) // per_page,
+            }
+        except Exception as e:
+            logger.error(f"日志解析积分历史失败: {str(e)}")
+            return {
+                "records": [],
+                "current_page": page,
+                "per_page": per_page,
+                "total_records": 0,
+                "total_pages": 0,
+            }

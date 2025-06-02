@@ -18,8 +18,10 @@
   import { login } from '@/api/auth';
   import { useRouter } from 'vue-router';
   import { ElMessage } from 'element-plus';
+  import { useUserStore } from '@/stores/user';
   
   const router = useRouter();
+  const userStore = useUserStore();
   const form = ref({ username: '', password: '' });
   
   const handleError = (error) => {
@@ -37,18 +39,22 @@
     try {
       const res = await login(form.value);
       if (res.data.data && res.data.data.token) {
+        // 先清除旧的数据
+        userStore.clearUserData();
+        
+        // 设置新的数据
         localStorage.setItem('token', res.data.data.token);
-        // 新增：存储角色
         if (res.data.data.role) {
-          localStorage.setItem('role', res.data.data.role);
+          userStore.setRole(res.data.data.role);
         }
+        
         ElMessage.success('登录成功');
         router.push('/');
       } else {
         ElMessage.error(res.data.message || '登录失败');
       }
     } catch (error) {
-      handleError(error); // 这里调用
+      handleError(error);
     }
   };
   </script>

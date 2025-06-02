@@ -12,7 +12,6 @@ points_bp = Blueprint("points", __name__)
 @points_bp.route("/balance", methods=["GET"])
 def get_points_balance():
     """获取积分余额"""
-    db = None
     try:
         # 验证token
         token = request.headers.get("Authorization", "").replace("Bearer ", "")
@@ -32,14 +31,12 @@ def get_points_balance():
     except Exception as e:
         return error_response(f"获取积分余额失败: {str(e)}", 500)
     finally:
-        if db is not None:
-            db.close()
+        db.close()
 
 
 @points_bp.route("/add", methods=["POST"])
 def add_points():
     """增加积分"""
-    db = None
     try:
         # 验证token
         token = request.headers.get("Authorization", "").replace("Bearer ", "")
@@ -68,14 +65,12 @@ def add_points():
     except Exception as e:
         return error_response(f"积分添加失败: {str(e)}", 500)
     finally:
-        if db is not None:
-            db.close()
+        db.close()
 
 
 @points_bp.route("/deduct", methods=["POST"])
 def deduct_points():
     """扣除积分"""
-    db = None
     try:
         # 验证token
         token = request.headers.get("Authorization", "").replace("Bearer ", "")
@@ -109,14 +104,12 @@ def deduct_points():
     except Exception as e:
         return error_response(f"积分扣除失败: {str(e)}", 500)
     finally:
-        if db is not None:
-            db.close()
+        db.close()
 
 
 @points_bp.route("/history", methods=["GET"])
 def get_points_history():
     """获取积分历史记录"""
-    db = None
     try:
         # 验证token
         token = request.headers.get("Authorization", "").replace("Bearer ", "")
@@ -138,14 +131,12 @@ def get_points_history():
     except Exception as e:
         return error_response(f"获取积分历史失败: {str(e)}", 500)
     finally:
-        if db is not None:
-            db.close()
+        db.close()
 
 
 @points_bp.route("/transfer", methods=["POST"])
 def transfer_points():
     """积分转账"""
-    db = None
     try:
         # 验证token
         token = request.headers.get("Authorization", "").replace("Bearer ", "")
@@ -154,7 +145,7 @@ def transfer_points():
             return error_response("认证失败", 401)
 
         data = request.get_json()
-        required_fields = ["target_user_id", "points", "message"]
+        required_fields = ["target_user_id", "points"]
 
         for field in required_fields:
             if field not in data:
@@ -164,7 +155,7 @@ def transfer_points():
         from_user_id = Decimal(payload["user_id"])
         to_user_id = Decimal(data["target_user_id"])
         points_amount = int(data["points"])
-        message = data["message"]
+        message = data["message"] if "message" in data else ""
 
         if points_amount <= 0:
             return error_response("转账积分必须大于0", 400)
@@ -188,14 +179,12 @@ def transfer_points():
     except Exception as e:
         return error_response(f"积分转账失败: {str(e)}", 500)
     finally:
-        if db is not None:
-            db.close()
+        db.close()
 
 
 @points_bp.route("/ranking", methods=["GET"])
 def get_points_ranking():
     """获取积分排行榜"""
-    db = None
     try:
         db = get_db_session()
 
@@ -209,5 +198,4 @@ def get_points_ranking():
     except Exception as e:
         return error_response(f"获取积分排行榜失败: {str(e)}", 500)
     finally:
-        if db is not None:
-            db.close()
+        db.close()

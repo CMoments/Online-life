@@ -1,9 +1,12 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_, desc
-from models import User, Reputation, Points, Admin, Client, Staff
+from sqlalchemy import Float, Integer
+from models import User, Reputation, Points, Admin, Client, Staff, Orders
 from decimal import Decimal
 from typing import Optional, Dict, List, Any
 import logging
+from datetime import datetime
+import traceback
 
 # 配置日志
 logger = logging.getLogger(__name__)
@@ -45,51 +48,51 @@ class UserUtils:
                     user_info.update(
                         {
                             "admin_level": (
-                                admin_info.AdminLevel
+                                admin_info.Adlevel
                                 if hasattr(admin_info, "AdminLevel")
                                 else None
                             ),
-                            "permissions": (
-                                admin_info.Permissions
-                                if hasattr(admin_info, "Permissions")
-                                else None
-                            ),
+                            # "permissions": (
+                            #     admin_info.Permissions
+                            #     if hasattr(admin_info, "Permissions")
+                            #     else None
+                            # ),
                         }
                     )
-            elif user.Role == "client":
-                client_info = db.query(Client).filter(Client.UserID == user_id).first()
-                if client_info:
-                    user_info.update(
-                        {
-                            "client_type": (
-                                client_info.ClientType
-                                if hasattr(client_info, "ClientType")
-                                else None
-                            ),
-                            "registration_date": (
-                                client_info.RegistrationDate.isoformat()
-                                if hasattr(client_info, "RegistrationDate")
-                                else None
-                            ),
-                        }
-                    )
-            elif user.Role == "staff":
-                staff_info = db.query(Staff).filter(Staff.UserID == user_id).first()
-                if staff_info:
-                    user_info.update(
-                        {
-                            "department": (
-                                staff_info.Department
-                                if hasattr(staff_info, "Department")
-                                else None
-                            ),
-                            "position": (
-                                staff_info.Position
-                                if hasattr(staff_info, "Position")
-                                else None
-                            ),
-                        }
-                    )
+            # elif user.Role == "client":
+            #     client_info = db.query(Client).filter(Client.UserID == user_id).first()
+            #     if client_info:
+            #         user_info.update(
+            #             {
+            #                 "client_type": (
+            #                     client_info.ClientType
+            #                     if hasattr(client_info, "ClientType")
+            #                     else None
+            #                 ),
+            #                 "registration_date": (
+            #                     client_info.RegistrationDate.isoformat()
+            #                     if hasattr(client_info, "RegistrationDate")
+            #                     else None
+            #                 ),
+            #             }
+            #         )
+            # elif user.Role == "staff":
+            #     staff_info = db.query(Staff).filter(Staff.UserID == user_id).first()
+            #     if staff_info:
+            #         user_info.update(
+            #             {
+            #                 "department": (
+            #                     staff_info.Department
+            #                     if hasattr(staff_info, "Department")
+            #                     else None
+            #                 ),
+            #                 "position": (
+            #                     staff_info.Position
+            #                     if hasattr(staff_info, "Position")
+            #                     else None
+            #                 ),
+            #             }
+            #         )
 
             return user_info
 
@@ -172,12 +175,20 @@ class UserUtils:
             信誉信息字典
         """
         try:
+            logger.info(f"开始获取用户 {user_id} 的信誉信息")
+            
             # 获取用户所有信誉记录
             reputations = (
-                db.query(Reputation).filter(Reputation.UserID == user_id).all()
+                db.query(Reputation)
+                .filter(Reputation.UserID == user_id)
+                .order_by(desc(Reputation.ReviewTime))  # 按评价时间倒序排序
+                .all()
             )
+            
+            logger.info(f"查询到 {len(reputations)} 条信誉记录")
 
             if not reputations:
+                logger.info(f"用户 {user_id} 没有信誉记录")
                 return {
                     "average_score": 0.0,
                     "total_reviews": 0,
@@ -205,33 +216,46 @@ class UserUtils:
                     reviewer = db.query(User).filter(User.UserID == rep.RUserID).first()
                     reviewer_name = reviewer.Username if reviewer else "匿名用户"
 
+                    # 获取订单信息（如果有）
+                    order_info = ""
+                    if rep.OrderID:
+                        order = db.query(Orders).filter(Orders.OrderID == rep.OrderID).first()
+                        if order:
+                            order_info = f" (订单: {order.OrderID})"
+
                     recent_reviews.append(
                         {
                             "score": score,
                             "review": rep.Review,
                             "reviewer": reviewer_name,
                             "reviewer_id": str(rep.RUserID),
+                            "review_time": rep.ReviewTime,
+                            "order_info": order_info
                         }
                     )
-                except (ValueError, TypeError):
+                except (ValueError, TypeError) as e:
+                    logger.error(f"处理信誉记录时出错: {str(e)}, 记录ID: {rep.ReputationID}")
                     continue
 
-            # 按评价时间排序（假设有时间字段，这里按ID倒序）
-            recent_reviews = sorted(
-                recent_reviews, key=lambda x: x["reviewer_id"], reverse=True
-            )[:10]
+            # 按评价时间排序
+            recent_reviews.sort(key=lambda x: x.get("review_time", ""), reverse=True)
+            recent_reviews = recent_reviews[:10]  # 只返回最近10条
 
             average_score = sum(scores) / len(scores) if scores else 0.0
-
-            return {
+            
+            result = {
                 "average_score": round(average_score, 2),
                 "total_reviews": len(scores),
                 "score_distribution": score_distribution,
                 "recent_reviews": recent_reviews,
             }
+            
+            logger.info(f"用户 {user_id} 的信誉信息: {result}")
+            return result
 
         except Exception as e:
             logger.error(f"获取信誉信息失败: {str(e)}")
+            logger.error(traceback.format_exc())
             return {
                 "average_score": 0.0,
                 "total_reviews": 0,
@@ -359,9 +383,7 @@ class UserUtils:
 
                 # 获取信誉评分
                 avg_score = (
-                    db.query(
-                        func.avg(func.cast(Reputation.Score, db.bind.dialect.FLOAT))
-                    )
+                    db.query(func.avg(func.cast(Reputation.Score, Float)))
                     .filter(Reputation.UserID == user.UserID)
                     .scalar()
                 )
@@ -395,6 +417,7 @@ class UserUtils:
             }
 
         except Exception as e:
+            traceback.print_exc()
             logger.error(f"获取用户列表失败: {str(e)}")
             return {
                 "users": [],
@@ -464,7 +487,7 @@ class UserUtils:
 
     @staticmethod
     def check_reputation_permission(
-        db: Session, reviewer_id: Decimal, target_user_id: Decimal
+        db: Session, reviewer_id: Decimal, target_user_id: Decimal, order_id: Optional[Decimal] = None
     ) -> bool:
         """
         检查是否可以评价用户（防止重复评价等）
@@ -473,6 +496,7 @@ class UserUtils:
             db: 数据库会话
             reviewer_id: 评价者ID
             target_user_id: 被评价者ID
+            order_id: 订单ID（可选）
 
         Returns:
             是否可以评价
@@ -482,23 +506,146 @@ class UserUtils:
             if reviewer_id == target_user_id:
                 return False
 
-            # 检查是否已经评价过（可根据业务需求调整）
-            existing_review = (
-                db.query(Reputation)
-                .filter(
-                    and_(
-                        Reputation.RUserID == reviewer_id,
-                        Reputation.UserID == target_user_id,
+            # 如果指定了订单ID，检查该订单是否已被评价
+            if order_id:
+                existing_review = (
+                    db.query(Reputation)
+                    .filter(
+                        and_(
+                            Reputation.RUserID == reviewer_id,
+                            Reputation.OrderID == order_id
+                        )
                     )
+                    .first()
                 )
-                .first()
-            )
+                return existing_review is None
 
-            return existing_review is None
+            # 如果没有指定订单ID，则允许评价（因为现在支持对不同订单评价）
+            return True
 
         except Exception as e:
             logger.error(f"检查评价权限失败: {str(e)}")
             return False
+
+    @staticmethod
+    def add_order_reputation(
+        db: Session,
+        reviewer_id: Decimal,
+        target_user_id: Decimal,
+        order_id: Decimal,
+        score: float,
+        review: str,
+    ) -> bool:
+        """
+        添加订单相关的信誉评价（client对staff）
+        """
+        try:
+            # 查找订单
+            order = db.query(Orders).filter(Orders.OrderID == order_id).first()
+            if not order:
+                logger.warning(f"订单不存在: order_id={order_id}")
+                return False
+            # 只允许client对staff评价
+            if order.ClientID != reviewer_id:
+                logger.warning(f"不是订单客户评价: order.ClientID={order.ClientID}, reviewer_id={reviewer_id}")
+                return False
+            if order.StaffID != target_user_id:
+                logger.warning(f"不是订单职员被评价: order.StaffID={order.StaffID}, target_user_id={target_user_id}")
+                return False
+            # 检查订单状态
+            if order.OrderStatus not in ["paid", "completed"]:
+                logger.warning(f"订单状态不允许评价: order.OrderStatus={order.OrderStatus}")
+                return False
+            # 检查是否已评价
+            existing = db.query(Reputation).filter(
+                Reputation.RUserID == reviewer_id,
+                Reputation.UserID == target_user_id,
+                Reputation.OrderID == order_id
+            ).first()
+            if existing:
+                logger.warning(f"已评价过: reviewer_id={reviewer_id}, target_user_id={target_user_id}, order_id={order_id}")
+                return False
+            # 写入Reputation表
+            rep = Reputation(
+                Score=int(score),
+                Review=review,
+                RUserID=reviewer_id,
+                UserID=target_user_id,
+                OrderID=order_id,
+                ReviewTime=datetime.now()
+            )
+            db.add(rep)
+            db.commit()
+            return True
+        except Exception as e:
+            logger.error(f"写入订单评价异常: {str(e)}")
+            logger.error(traceback.format_exc())
+            db.rollback()
+            return False
+
+    @staticmethod
+    def get_order_reputation(db: Session, order_id: Decimal) -> Dict[str, Any]:
+        """
+        获取订单相关的评价信息
+
+        Args:
+            db: 数据库会话
+            order_id: 订单ID
+
+        Returns:
+            订单评价信息
+        """
+        try:
+            # 查询订单相关的评价
+            reputations = (
+                db.query(Reputation).filter(Reputation.OrderID == order_id).all()
+            )
+
+            if not reputations:
+                return {"client_to_staff": None, "staff_to_client": None}
+
+            # 获取订单信息
+            order = db.query(Orders).filter(Orders.OrderID == order_id).first()
+            if not order:
+                return {"client_to_staff": None, "staff_to_client": None}
+
+            client_id = order.ClientID
+            staff_id = order.StaffID
+
+            result = {"client_to_staff": None, "staff_to_client": None}
+
+            for rep in reputations:
+                # 客户评价代办人员
+                if rep.RUserID == client_id and rep.UserID == staff_id:
+                    client = db.query(User).filter(User.UserID == client_id).first()
+                    staff = db.query(User).filter(User.UserID == staff_id).first()
+
+                    result["client_to_staff"] = {
+                        "reviewer": client.Username if client else "未知用户",
+                        "target": staff.Username if staff else "未知用户",
+                        "score": float(rep.Score),
+                        "review": rep.Review,
+                        "review_time": rep.ReviewTime,
+                    }
+
+                # 代办人员评价客户
+                if rep.RUserID == staff_id and rep.UserID == client_id:
+                    client = db.query(User).filter(User.UserID == client_id).first()
+                    staff = db.query(User).filter(User.UserID == staff_id).first()
+
+                    result["staff_to_client"] = {
+                        "reviewer": staff.Username if staff else "未知用户",
+                        "target": client.Username if client else "未知用户",
+                        "score": float(rep.Score),
+                        "review": rep.Review,
+                        "review_time": rep.ReviewTime,
+                    }
+
+            return result
+
+        except Exception as e:
+            logger.error(f"获取订单评价失败: {str(e)}")
+            return {"client_to_staff": None, "staff_to_client": None}
 
     @staticmethod
     def get_user_statistics(db: Session, user_id: Decimal) -> Dict[str, Any]:
@@ -526,7 +673,7 @@ class UserUtils:
             )
 
             avg_reputation = (
-                db.query(func.avg(func.cast(Reputation.Score, db.bind.dialect.FLOAT)))
+                db.query(func.avg(func.cast(Reputation.Score, Float)))
                 .filter(Reputation.UserID == user_id)
                 .scalar()
                 or 0.0
@@ -542,9 +689,9 @@ class UserUtils:
                                 (
                                     Points.Points
                                     if hasattr(Points, "Points")
-                                    else Points.Value
+                                    else Points.Points
                                 ),
-                                db.bind.dialect.INTEGER,
+                                Integer,
                             )
                         )
                     )
@@ -555,7 +702,7 @@ class UserUtils:
             except:
                 total_points = 0
 
-            return {
+            result = {
                 "user_info": {
                     "user_id": str(user.UserID),
                     "username": user.Username,
@@ -568,6 +715,136 @@ class UserUtils:
                 "points": {"total_points": total_points},
             }
 
+            # 如果角色为staff，额外获取salary信息
+            if user.Role == "staff":
+                staff = db.query(Staff).filter(Staff.UserID == user_id).first()
+                if staff and hasattr(staff, "Salary"):
+                    result["staff_info"] = {
+                        "salary": staff.Salary,
+                        "staff_id": (
+                            str(staff.StaffID) if hasattr(staff, "StaffID") else ""
+                        ),
+                    }
+
+            return result
+
         except Exception as e:
+            traceback.print_exc()
             logger.error(f"获取用户统计信息失败: {str(e)}")
             return {}
+
+    @staticmethod
+    def admin_update_user_info(
+        db: Session, admin_id: Decimal, user_id: Decimal, data: Dict[str, Any]
+    ) -> bool:
+        """
+        管理员更新用户信息
+
+        Args:
+            db: 数据库会话
+            admin_id: 管理员ID
+            user_id: 被修改的用户ID
+            data: 更新数据
+
+        Returns:
+            更新是否成功
+        """
+        try:
+            # 验证管理员权限
+            admin = (
+                db.query(User)
+                .filter(User.UserID == admin_id, User.Role == "admin")
+                .first()
+            )
+            if not admin:
+                logger.error(f"管理员权限验证失败: {admin_id}")
+                return False
+
+            # 查找目标用户
+            user = db.query(User).filter(User.UserID == user_id).first()
+            if not user:
+                logger.error(f"用户不存在: {user_id}")
+                return False
+
+            # 可更新的字段
+            updatable_fields = ["username", "email", "phone", "address", "role"]
+
+            for field in updatable_fields:
+                if field in data and data[field] is not None:
+                    # 转换字段名为数据库字段名
+                    db_field = field.capitalize() if field != "username" else "Username"
+                    setattr(user, db_field, data[field])
+
+            # 如果修改了角色，需要确保相应的角色表中也有记录
+            if "role" in data and data["role"] != user.Role:
+                # 这里可以添加角色变更的逻辑，如果需要的话
+                # 例如：如果用户从client变为staff，需要在Staff表中添加记录
+                pass
+
+            db.commit()
+            logger.info(f"管理员 {admin_id} 成功更新用户 {user_id} 的信息")
+            return True
+
+        except Exception as e:
+            logger.error(f"管理员更新用户信息失败: {str(e)}")
+            db.rollback()
+            return False
+
+    @staticmethod
+    def admin_reset_user_password(
+        db: Session, admin_id: Decimal, user_id: Decimal, new_password_hash: str
+    ) -> bool:
+        """
+        管理员重置用户密码
+
+        Args:
+            db: 数据库会话
+            admin_id: 管理员ID
+            user_id: 被重置密码的用户ID
+            new_password_hash: 新密码哈希值
+
+        Returns:
+            重置是否成功
+        """
+        try:
+            # 验证管理员权限
+            admin = (
+                db.query(User)
+                .filter(User.UserID == admin_id, User.Role == "admin")
+                .first()
+            )
+            if not admin:
+                logger.error(f"管理员权限验证失败: {admin_id}")
+                return False
+
+            # 查找目标用户
+            user = db.query(User).filter(User.UserID == user_id).first()
+            if not user:
+                logger.error(f"用户不存在: {user_id}")
+                return False
+
+            # 更新密码
+            user.Password = new_password_hash
+
+            # 如果用户在其他表中也有密码字段，也需要更新
+            if user.Role == "admin":
+                admin_user = db.query(Admin).filter(Admin.UserID == user_id).first()
+                if admin_user:
+                    admin_user.Password = new_password_hash
+            elif user.Role == "client":
+                client_user = db.query(Client).filter(Client.UserID == user_id).first()
+                if client_user:
+                    client_user.Password = new_password_hash
+            elif user.Role == "staff":
+                staff_user = db.query(Staff).filter(Staff.UserID == user_id).first()
+                if staff_user:
+                    staff_user.Password = new_password_hash
+
+            db.commit()
+            logger.info(f"管理员 {admin_id} 成功重置用户 {user_id} 的密码")
+            return True
+
+        except Exception as e:
+            logger.error(f"管理员重置用户密码失败: {str(e)}")
+            db.rollback()
+            return False

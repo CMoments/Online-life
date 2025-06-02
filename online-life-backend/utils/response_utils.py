@@ -6,7 +6,6 @@ def success_response(data=None, message="操作成功", status_code=200):
     """成功响应"""
     response = {
         "success": True,
-        "code": status_code,  # 新增
         "message": message,
         "data": data,
         "timestamp": datetime.now().isoformat(),
@@ -18,7 +17,6 @@ def error_response(message="操作失败", status_code=400, error_code=None):
     """错误响应"""
     response = {
         "success": False,
-        "code": status_code,  # 新增
         "message": message,
         "error_code": error_code,
         "timestamp": datetime.now().isoformat(),

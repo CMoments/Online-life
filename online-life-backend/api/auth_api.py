@@ -4,13 +4,13 @@ from utils.db_utils import get_db_session
 from utils.response_utils import success_response, error_response
 from models import User, Admin, Client, Staff
 import hashlib
+
 auth_bp = Blueprint("auth", __name__)
 
 
 @auth_bp.route("/register", methods=["POST"])
 def register():
     """用户注册"""
-    db = None
     try:
         data = request.get_json()
         required_fields = ["username", "password", "email", "phone", "address", "role"]
@@ -85,7 +85,9 @@ def register():
         )
 
         db.add(base_user)
-        db.commit()
+        # db.commit()
+        db.flush()
+
         db.add(new_user)
         db.commit()
 
@@ -99,12 +101,10 @@ def register():
         )
 
     except Exception as e:
-        print("register error:", e)
-        import traceback; traceback.print_exc()
+        db.rollback()
         return error_response(f"注册失败: {str(e)}", 500)
     finally:
-        if db is not None:
-            db.close()
+        db.close()
 
 
 @auth_bp.route("/login", methods=["POST"])
@@ -120,23 +120,27 @@ def login():
 
         # 验证用户
         user = AuthUtils.authenticate_user(db, data["username"], data["password"])
-        print("尝试登录用户名：", data["username"])
-        print("数据库查到的用户对象：", user)
         if not user:
             return error_response("用户名或密码错误", 401)
 
         # 生成JWT令牌
         token = AuthUtils.generate_token(user.UserID, user.Role)
 
-        return success_response({"token": token, "role": user.Role}, "登录成功")
+        return success_response(
+            {
+                "token": token,
+                "user_id": str(user.UserID),
+                "username": user.Username,
+                "role": user.Role,
+                "email": user.Email,
+            },
+            "登录成功",
+        )
 
     except Exception as e:
-        print("login error:", e)
-        import traceback; traceback.print_exc()
         return error_response(f"登录失败: {str(e)}", 500)
     finally:
-        if 'db' in locals():
-            db.close()
+        db.close()
 
 
 @auth_bp.route("/logout", methods=["POST"])

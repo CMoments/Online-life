@@ -11,7 +11,8 @@ from api.user_api import user_bp
 from api.order_api import order_bp
 from api.task_api import task_bp
 from api.points_api import points_bp
-
+import logging
+logging.basicConfig(level=logging.DEBUG)
 
 def create_app():
     app = Flask(__name__)

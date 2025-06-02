@@ -31,3 +31,15 @@ export function getMyBids(params) {
 export function acceptBid(taskId, bidId) {
   return request.post(`/api/task/${taskId}/accept-bid/${bidId}`);
 }
+
+export function getStaffAvailableTasks(params) {
+  return request.get('/api/task/staff/available', { params });
+}
+
+export function bidStaffTask(taskId) {
+  return request.post(`/api/task/staff/${taskId}/bid`);
+}
+
+export function createGroupTask(data) {
+  return request.post('/api/task/group/create', data);
+}
