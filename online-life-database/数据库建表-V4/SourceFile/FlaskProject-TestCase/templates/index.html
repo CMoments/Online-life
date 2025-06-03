@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Online 数据库测试页面</title>
+</head>
+<body>
+    <h1>Database Tables</h1>
+    <ul>
+        {% for table_name, table_info in tables.items() %}
+            <li>
+                <h2>{{ table_name }}</h2>
+                <h3>Fields</h3>
+                <table border="1">
+                    <thead>
+                        <tr>
+                            <th>Field</th>
+                            <th>Data Type</th>
+                            <th>Nullable</th>
+                            <th>Default</th>
+                            <th>Comment</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for column in table_info.columns %}
+                            <tr>
+                                <td>{{ column.COLUMN_NAME }}</td>
+                                <td>{{ column.DATA_TYPE }}</td>
+                                <td>{{ column.IS_NULLABLE }}</td>
+                                <td>{{ column.COLUMN_DEFAULT }}</td>
+                                <td>{{ column.COLUMN_COMMENT }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
+                <h3>Constraints</h3>
+                <table border="1">
+                    <thead>
+                        <tr>
+                            <th>Constraint Type</th>
+                            <th>Column Name</th>
+                            <th>Constraint Name</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for constraint in table_info.constraints %}
+                            <tr>
+                                <td>{{ constraint.CONSTRAINT_TYPE }}</td>
+                                <td>{{ constraint.COLUMN_NAME }}</td>
+                                <td>{{ constraint.CONSTRAINT_NAME }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
+                <h3>Data</h3>
+                {% if table_info.data %}
+                    <table border="1">
+                        <thead>
+                            <tr>
+                                {% for column in table_info.columns %}
+                                    <th>{{ column.COLUMN_NAME }}</th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in table_info.data %}
+                                <tr>
+                                    {% for value in row.values() %}
+                                        <td>{{ value }}</td>
+                                    {% endfor %}
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <p>No data in this table.</p>
+                {% endif %}
+            </li>
+        {% endfor %}
+    </ul>
+</body>
+</html>
