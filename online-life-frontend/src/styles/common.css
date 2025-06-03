@@ -1,0 +1,99 @@
+/* 卡片基础样式 */
+.el-card {
+  border: none !important;
+  border-radius: 8px !important;
+  transition: all 0.3s ease;
+  box-shadow: 2px 2px 16px rgba(0, 0, 0, 0.12), 
+              -2px -2px 16px rgba(0, 0, 0, 0.12) !important;
+}
+
+.el-card:hover {
+  box-shadow: 4px 4px 24px rgba(0, 0, 0, 0.15),
+              -4px -4px 24px rgba(0, 0, 0, 0.15) !important;
+  transform: translateY(-2px);
+}
+
+/* 统计卡片样式 */
+.stats-card {
+  height: 100%;
+  background-color: #ffffff !important;
+  box-shadow: 3px 3px 20px rgba(0, 0, 0, 0.15),
+              -3px -3px 20px rgba(0, 0, 0, 0.15) !important;
+}
+
+.stats-card:hover {
+  box-shadow: 5px 5px 28px rgba(0, 0, 0, 0.2),
+              -5px -5px 28px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* 数据展示卡片样式 */
+.data-card {
+  margin-bottom: 20px;
+  background-color: #ffffff !important;
+  box-shadow: 2px 2px 16px rgba(0, 0, 0, 0.12),
+              -2px -2px 16px rgba(0, 0, 0, 0.12) !important;
+}
+
+.data-card:hover {
+  box-shadow: 4px 4px 24px rgba(0, 0, 0, 0.15),
+              -4px -4px 24px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* 表单卡片样式 */
+.form-card {
+  padding: 24px;
+  background-color: #ffffff !important;
+  box-shadow: 2px 2px 16px rgba(0, 0, 0, 0.12),
+              -2px -2px 16px rgba(0, 0, 0, 0.12) !important;
+}
+
+.form-card:hover {
+  box-shadow: 4px 4px 24px rgba(0, 0, 0, 0.15),
+              -4px -4px 24px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* 列表卡片样式 */
+.list-card {
+  background-color: #ffffff !important;
+  box-shadow: 2px 2px 16px rgba(0, 0, 0, 0.12),
+              -2px -2px 16px rgba(0, 0, 0, 0.12) !important;
+}
+
+.list-card:hover {
+  box-shadow: 4px 4px 24px rgba(0, 0, 0, 0.15),
+              -4px -4px 24px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* 详情卡片样式 */
+.detail-card {
+  background-color: #ffffff !important;
+  box-shadow: 2px 2px 16px rgba(0, 0, 0, 0.12),
+              -2px -2px 16px rgba(0, 0, 0, 0.12) !important;
+}
+
+.detail-card:hover {
+  box-shadow: 4px 4px 24px rgba(0, 0, 0, 0.15),
+              -4px -4px 24px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* 卡片标题样式 */
+.el-card__header {
+  padding: 16px 20px !important;
+  border-bottom: 1px solid var(--el-border-color-lighter) !important;
+}
+
+/* 卡片内容样式 */
+.el-card__body {
+  padding: 20px !important;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .el-card__body {
+    padding: 16px !important;
+  }
+  
+  .form-card {
+    padding: 16px;
+  }
+} 

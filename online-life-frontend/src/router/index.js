@@ -17,6 +17,7 @@ import StaffAvailableGroupTask from '@/views/StaffAvailableGroupTask.vue';
 import CreateGroupTask from '@/views/CreateGroupTask.vue';
 import MyGroupTasks from '@/views/MyGroupTasks.vue';
 import MyBidRecords from '@/views/MyBidRecords.vue';
+import Developers from '@/views/Developers.vue';
 
 
 const routes = [
@@ -41,6 +42,7 @@ const routes = [
   { path: '/points', component: Points },
   { path: '/reputation', component: Reputation },
   { path: '/users', component: UserList },
+  { path: '/developers', component: Developers },
   {
     path: '/create-order',
     name: 'CreateOrder',
@@ -64,13 +66,27 @@ router.beforeEach((to, from, next) => {
   const role = localStorage.getItem('role');
   console.log('当前用户token:', token, '当前用户role:', role);
 
+  // 未登录用户只能访问登录和注册页面
   if (to.path !== '/login' && to.path !== '/register' && !token) {
     next('/login');
-  } else if ((to.path === '/login' || to.path === '/register') && token) {
-    next('/');
-  } else {
-    next();
+    return;
   }
+
+  // 已登录用户不能访问登录和注册页面
+  if ((to.path === '/login' || to.path === '/register') && token) {
+    next('/');
+    return;
+  }
+
+  // 权限控制
+  const adminOnlyPaths = ['/users', '/developers'];
+  if (adminOnlyPaths.includes(to.path) && role !== 'admin') {
+    next('/');
+    return;
+  }
+
+  // 其他情况正常通过
+  next();
 });
 
 const payOrderHandler = async () => {

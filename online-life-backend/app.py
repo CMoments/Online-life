@@ -1,9 +1,11 @@
-from flask import Flask
+from flask import Flask, request, jsonify
 from flask_cors import CORS
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from config import DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME
 from models import Base
+import logging
+logging.basicConfig(level=logging.DEBUG)
 
 # 导入API蓝图
 from api.auth_api import auth_bp
@@ -11,8 +13,6 @@ from api.user_api import user_bp
 from api.order_api import order_bp
 from api.task_api import task_bp
 from api.points_api import points_bp
-import logging
-logging.basicConfig(level=logging.DEBUG)
 
 def create_app():
     app = Flask(__name__)
@@ -50,7 +50,6 @@ def create_app():
         return {"status": "healthy", "message": "服务运行正常"}
 
     return app
-
 
 if __name__ == "__main__":
     app = create_app()
