@@ -81,7 +81,7 @@ const developers = ref([
     name: 'CMoments',
     role: '全栈开发工程师',
     avatar: new URL('../assets/avatars/developer1.jpg', import.meta.url).href,
-    description: '山西省太原市圪僚沟村财团董事长，挖煤科技集团创始人。5年Vue.js开发经验，专注于用户体验和界面设计。',
+    description: '301所首席科学家，哥布林巢穴执行总裁。5年Vue.js开发经验，专注于用户体验和界面设计。',
     skills: ['Vue.js', 'TypeScript', 'Element Plus']
   },
   {
