@@ -97,7 +97,7 @@ const developers = ref([
     name: 'ʕ•͡•ʔ',
     role: '全栈开发工程师',
     avatar: new URL('../assets/avatars/developer5.jpg', import.meta.url).href,
-    description: '四川地区商界领袖、绵阳财团董事长。4年全栈开发经验，擅长前后端技术整合。',
+    description: '4年全栈开发经验，擅长前后端技术整合。',
     skills: ['Node.js', 'React', 'MongoDB']
   },
   {
@@ -113,7 +113,7 @@ const developers = ref([
     name: '可惜爱不是写诗',
     role: '全栈开发工程师',
     avatar: new URL('../assets/avatars/developer3.jpg', import.meta.url).href,
-    description: 'DevOps工程师,5年运维经验，专注于自动化部署和系统监控。',
+    description: '四川地区商界领袖、绵阳财团董事长。DevOps工程师,5年运维经验，专注于自动化部署和系统监控。',
     skills: ['Docker', 'Kubernetes', 'Jenkins']
   }
 ])
@@ -522,5 +522,31 @@ const selectDeveloper = (developer) => {
 .upload-area:hover .avatar-uploader-icon {
   color: #42b883;
   transform: scale(1.1);
+}
+
+.detail-description {
+  font-size: 1.4em;
+  line-height: 1.6;
+  color: #2c3e50;
+  margin: 20px 0 40px;
+  padding: 15px;
+  background: rgba(66, 184, 131, 0.05);
+  border-radius: 12px;
+  border-left: 4px solid #42b883;
+}
+
+.developer-detail {
+  h2.detail-name {
+    font-size: 2.5em;
+    margin-bottom: 10px;
+    color: #42b883;
+    font-weight: 600;
+  }
+
+  .detail-role {
+    font-size: 1.2em;
+    color: #666;
+    margin-bottom: 20px;
+  }
 }
 </style> 
